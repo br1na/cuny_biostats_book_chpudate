@@ -12,6 +12,8 @@ editor:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+source("../globals.R")
+
 ```
 
 In this chapter will build on our introduction to significance testing
@@ -167,6 +169,21 @@ Note in general when ln(y) decreases linearly with x, y decreases at a
 constant proportional rate with x. So we can say a normal random variate
 is any random variable in which the probability of an observation
 declines in proportion to its squared deviation from the mean (µ).
+
+A normal distribution can take on a lot of shapes given these two
+parameters. We can shift where the distribution is centered using the
+$\mu$ parameter and how peaked (or not) using the $\sigma$ parameter.
+
+```{r}
+#| fig-cap: Note how $\mu$ sets the location of the distribution and $\sigma$ effects the spread
+ggplot() + xlim(-20, 20)+
+  geom_function(aes(colour = "(0,1)"), fun = dnorm, args = list(mean = 0, sd = 1)) +
+  geom_function(aes(colour = "(10,1"), fun = dnorm, args = list(mean = 10, sd = 1)) +
+  geom_function(aes(colour = "(0,4)"), fun = dnorm, args = list(mean = 0, sd = 4)) +
+  geom_function(aes(colour = "(10,4)"), fun = dnorm, args = list(mean = 10, sd = 4))+
+  labs(col = expression(paste('Values of (', mu, ",", sigma, ")" )),
+       y="Probability")
+```
 
 Let's fit a normal distribution to our data:
 
@@ -720,8 +737,7 @@ To calculate the test statistic in R, we can instead (thankfully!) use
 the *t.test* function.
 
 ```{r}
-t.test(iris[iris$Species == "virginica","Sepal.Length"], mu = 7, 
-             sigma.x= sd(iris[iris$Species == "virginica","Sepal.Length"]))
+t.test(iris[iris$Species == "virginica","Sepal.Length"], mu = 7)
 ```
 
 Note the t-test also provides confidence intervals. Note these consider

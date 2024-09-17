@@ -9,6 +9,8 @@ bibliography: ../references.bib
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+source("../globals.R")
+
 ```
 
 So far we've used linear models to consider how categorical predictors
@@ -591,25 +593,8 @@ marks significant relationships using asterisks (any asterisk indicates
 a p value of \< .05):
 
 ```{r}
-panel.cor <- function(x, y, digits=2, prefix="", cex.cor) 
-{
-  usr <- par("usr"); on.exit(par(usr)) 
-  par(usr = c(0, 1, 0, 1)) 
-  r <- abs(cor(x, y)) 
-  txt <- format(c(r, 0.123456789), digits=digits)[1] 
-  txt <- paste(prefix, txt, sep="") 
-  if(missing(cex.cor)) cex <- 0.8/strwidth(txt) 
-  
-  test <- cor.test(x,y) 
-  # borrowed from printCoefmat
-  Signif <- symnum(test$p.value, corr = FALSE, na = FALSE, 
-                   cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
-                   symbols = c("***", "**", "*", ".", " ")) 
-  
-  text(0.5, 0.5, txt, cex = cex * r) 
-  text(.8, .8, Signif, cex=cex, col=2) 
-}
-pairs(fev, lower.panel=panel.smooth, upper.panel=panel.cor)
+library(psych)
+pairs.panels(fev, stars=T)
 ```
 
 Note we significant relationships among FEV and several variagles (e.g.,
@@ -706,7 +691,7 @@ add1(fev_under_a, ~ . + Height + Sex, test = "F")
 ### Option 3: Compare models (nested or not) using AIC
 
 You may have noted the AIC values above. AIC is "an information
-criteria" that uses maximum likelihood..
+criteria" that uses maximum likelihood to compare models.
 
 <details>
 
@@ -765,11 +750,11 @@ used to compare multiple models.
 
 </details>
 
-to compare models. To do so, it obtains a likelihood value for a model
-and takes a log of it. It then multiples that by -2 and adds a penalty
-parameter multiplied by the number of parameters in the model. Why?
-Because the algorithms used mean an extra parameter will always make a
-model better (or at least no worse).
+To do so, it obtains a likelihood value for a model and takes a log of
+it. It then multiples that by -2 and adds a penalty parameter multiplied
+by the number of parameters in the model. Why? Because the algorithms
+used mean an extra parameter will always make a model better (or at
+least no worse).
 
 The true *AIC* process uses a penalty parameter of 2; other approaches
 vary this. The Bayesian information criterion (BIC), for example, uses a
@@ -827,9 +812,21 @@ model.avg(auto, subset = delta < 2)
 While AIC and other IC may be an interesting approach, a few points
 should be made.
 
--   AIC values are relative only to models fit with the same data.
+-   AIC values are relative only to models fit with the same data in the
+    same way.
 
     -   So there is no "good" AIC value
+
+    -   Different programs may use different additive components, so be
+        careful in using functions or different pieces of software to
+        calculate AIC for different models that you want to compare. In
+        R, an easy example is the following functions (both in base R)
+        give different output (as noted in their respective help files)
+
+        ```{r}
+        AIC(fev_full)
+        extractAIC(fev_full)
+        ```
 
 -   AIC outcomes actually correspond to using an $\alpha$ level of .15
     [@steyerberg2000], so AIC approaches typically favor larger models
@@ -837,6 +834,12 @@ should be made.
 -   AIC relies on large-sample approximations
 
     -   AICc corrects for small samples and can always be used.
+
+-   Models that are being compared must focus on the same set of
+    outcomes. One model can't use fewer rows due to missing data, and
+    different responses (we'll cover transformations and glms in a few
+    chapters) can't be compared. Note, however, models may differ in the
+    number of explanatory variables.
 
 ### Option 4: Compare r^2^ (or adjusted r^2^) values
 

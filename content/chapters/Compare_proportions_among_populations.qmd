@@ -9,6 +9,8 @@ bibliography: ../references.bib
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+source("../globals.R")
+
 ```
 
 Now that we've covered hypothesis testing for both discrete and
@@ -44,8 +46,8 @@ data in a table.
 |                   | **Observed** |         |                |
 |-------------------|--------------|---------|----------------|
 |                   | *Finch*      | *Junco* | **Row Totals** |
-|                   | 9            | 4       | 13             |
-|                   | 9            | 7       | 16             |
+| *Older*           | 9            | 4       | 13             |
+| *Younger*         | 9            | 7       | 16             |
 | **Column Totals** | 18           | 11      | N = 29         |
 
 First, we could plot our data
@@ -118,14 +120,16 @@ Since we have 13/29 birds are old, we should expect
 |                   | **Observed** |             |                |
 |-------------------|--------------|-------------|----------------|
 |                   | *Finch*      | *Junco*     | **Row Totals** |
-|                   | 18 \* 13/29  | 11 \* 13/29 | 13             |
-|                   | 18 \* 16/29  | 11 \* 16/29 | 16             |
+| *Older*           | 18 \* 13/29  | 11 \* 13/29 | 13             |
+| *Younger*         | 18 \* 16/29  | 11 \* 16/29 | 16             |
 | **Column Totals** | 18           | 11          | N = 29         |
 
-In order to carry out a sampling experiment to consider noise from this
-expected outcome, we have to determine the p parameter to use for our
-population. This is because under the null hypothesis, there is only one
-population- any observed difference is just due to chance!
+This provides us expectations under the null, but we need to turn them
+into a test statistic (to get a signal) and carry out a sampling
+experiment to consider noise from this expected outcome. To do this, we
+have to determine the p parameter to use for our population under the
+null hypothesis. This is because under the null hypothesis, there is
+only one population- any observed difference is just due to chance!
 
 However, we have an issue - we don't know p. In our binomial experiment
 it was set by our null hypothesis. Now we are comparing *p* among
@@ -161,7 +165,7 @@ ggplot(sampling_experiment_long,aes(x=mean)) +
 
 So, we can replace the binomial distribution in our sampling experiment
 with a normal population. To use this approach, we estimate a value for
-*p*, $\hat{p}$, from the data, and let
+*p*, $\hat{p}$, from the data and null hypothesis, and let
 
 $$
 \begin{split}
@@ -170,9 +174,10 @@ $$
 \end{split}
 $$
 
-We then draw only 1 draws this distribution. Why only 1? Because we need
-to keep the sample sizes the same, so the row and column totals are set!
-Remember this for a moment. After we draw 1 number, we fill in the rest.
+We then draw only 1 cell from this distribution. Why only 1? Because we
+need to keep the sample sizes the same, so the row and column totals are
+set! Remember this for a moment. After we draw 1 number, we fill in the
+rest.
 
 ```{r, warning=F}
 num_of_simulations <- 10000
@@ -191,18 +196,22 @@ sep =""), x=expression(chi^2), color="Source")+guides(fill=F)+
   scale_fill_manual(values=colors)
 ```
 
-Once we carry out the sampling experiment, we can Z-transform our cell
-data(because they are normal now!). The results for a single cell would
-follow a N(0,1) distribution (the Z). If we wanted, we could square
-these outcomes (which would then follow a $\chi^2$ distribution, by
-definition), and, since we have 4 cells, add them. The resulting variate
-would follow a $\chi^2$ distribution with 1 degree of freedom (since we
-drew 1 numbers for the free "cell" in our table). Finally, because of
-all the p's above, we could actually rewrite all of this as
+Once we carry out the sampling experiment, we can calculate a test
+statistic. A common approach is to use some algebra (combining n's and
+p's)and math to come up with
 
 $$
 V=\sum_{i=1}^{n}{\frac{{(Observed-Expected)}^2}{Expected}} \textrm{where n is number of cells}
 $$
+
+This is related to Pearson's $\chi^2$ test @benhamou. In short, the
+results for each cell are now from a normal distribution. They can be be
+z-transformed (remember that?) to follow a N(0,1) distribution (the Z).
+If we wanted, we could square these outcomes (which would then follow a
+$\chi^2$ distribution, by definition), and, since we have 4 cells, add
+them. The resulting variate would follow a $\chi^2$ distribution, but
+with 1 degree of freedom since we drew 1 number for the free "cell" in
+our table.
 
 ## Contingency analysis using the $\chi^2$ test
 
@@ -244,13 +253,16 @@ the data frame. Consider the difference in format. This is long data
 birds_original
 ```
 
-and this wide
+and this is wide
 
 ```{r}
 library(reshape2) 
 birds_wide <- dcast(birds_original, Age~Species) 
 birds_wide
 ```
+
+The difference in wide vs. long data frames will become more important
+later on. In general data is best stored in long format.
 
 We can make the matrix with wide data
 
@@ -582,7 +594,8 @@ Let' s us see we want to compare columns.
 ```{r}
 library(rcompanion)
 bonf_correct <- pairwiseNominalIndependence(bird_ratio_table, compare="col", method = "bonf")
-bonf_correct
+library(rmarkdown)
+paged_table(bonf_correct)
 
 ```
 
@@ -597,7 +610,7 @@ You can order and display these differently if it helps. For example, if
 we used the $\chi^2$ test.
 
 ```{r}
-bonf_correct[order(bonf_correct$p.adj.Chisq), c("Comparison", "p.adj.Chisq")]
+paged_table(bonf_correct[order(bonf_correct$p.adj.Chisq), c("Comparison", "p.adj.Chisq")])
 ```
 
 We see that catbirds different from finches and cardinals in the
@@ -608,19 +621,28 @@ would have found from just comparing the two groups
 ```{r}
 chisq.test(matrix(c(6,30,12,7), nrow=2, byrow=T))
 bonf_correct[bonf_correct$Comparison=="Finch : Catbird", "p.Chisq"]
-
 ```
 
-However, this comparison is very conservative. Many other options exist,
-and we will explore two here.
+Since we have 10 comparisons, the adusted value is an order of magnitude
+larger:
+
+```{r}
+paged_table(bonf_correct[bonf_correct$Comparison=="Finch : Catbird", c("p.Chisq", "p.adj.Chisq")])
+```
+
+If the un-adjusted p-value was greater than .1, the adjusted value
+becomes 1. However, this comparison is very conservative. Many other
+options exist, and we will explore two here.
 
 The sequential Bonferroni, or Holm's, method, allocates your $\alpha$ to
-accept as many tests as signficant as possible while still controlling
+accept as many tests as significant as possible while still controlling
 for the FWER. To do this, it orders the post-hoc tests by p-value,
-smallest to largest. It then rejects the null hypothesis attached to the
-smallest p-value and subtracts that p-value from $\alpha$. It continues
-to do this until $\alpha$ is too small to reject the next smallest
-p-value. I think of it as buying p-values with $\alpha$.
+smallest to largest. It then compares the smallest p-value to $\alpha$
+divided the number of tests we intend to run. If the p-value is smaller
+than the resulting employed $\alpha$ , the next smallest p-value is
+compared to $\alpha$ divided the number of tests we intend to run
+*minus* 1 (since we've already run one test). This process continues
+until a p value is larger than the employed $\alpha$.
 
 We can use this approach by simply changing the method. Let's also order
 our results again for viewing.
@@ -637,10 +659,13 @@ to the "holm" approach.
 A final approach we will demonstrate is called the False Discovery Rate,
 or FDR, approach. It's similar to the Holm's approach in that it starts
 by ordering the post-hoc tests by p-value, smallest to largest. However,
-it then rejects the null hypothesis attached to the largest p-value that
-is \< $\alpha$ and subsequently rejects all null hypotheses attached to
-smaller p-values. It is thus less conservative but basically attempts to
-maximize the number of hypotheses you reject given a set $\alpha$.
+it then calculates a q-value for each test (as
+$q=\frac{\textrm{number of tests where } H_O {\textrm{ is assumed to be true}}}{\textrm{rank of p-value}}\ p-value$
+) and finds the largest q-value that is smaller than $\alpha$; all tests
+with smaller q-values are then rejected (alternatively, all tests with
+q-values \< $\alpha$ are rejected).It is thus less conservative but
+basically attempts to maximize the number of hypotheses you reject given
+a set $\alpha$.
 
 ```{r}
 fdr_correct <- pairwiseNominalIndependence(bird_ratio_table, compare="col", method = "fdr")

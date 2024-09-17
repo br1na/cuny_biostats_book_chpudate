@@ -9,6 +9,7 @@ bibliography: ../references.bib
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+source("../globals.R")
 ```
 
 In the last chapter we introduced the idea of comparing means among
@@ -283,10 +284,21 @@ focusing on the difference in means (like a 2-sample t-test), the test
 focuses on the mean difference between paired measurements (which would
 be 0 under the null hypothesis!). In this way, it is effectively a
 one-sample test that is pairing the data to reduce variation (blocking).
-We can do carry out the test:
+We can carry out the test, but (as of early 2024) we need to use a wide
+dataset.
+
+<!-- t.test no longer allowing paired in formula method as of early 2024  -->
 
 ```{r}
-t.test(Color_index ~ Feather_type, data=feather, paired=TRUE)
+library(reshape2) 
+feather_wide <- dcast(feather, Bird~Feather_type, value.var="Color_index")
+paged_table(feather_wide)
+```
+
+Now we have wide data...
+
+```{r}
+t.test(feather_wide$Odd, feather_wide$Typical, data=feather, paired=TRUE)
 ```
 
 and get the same results as above (note we don't even have to consider
@@ -580,7 +592,221 @@ Anova(bgb_model_cont_removed, type="III")
 
 ...that the ANOVA table works.
 
-### Intepreting interactions
+Before we can interpret this, we need to return to our discussion about
+different sums of squares.
+
+### Back to type = III
+
+Much of this follows an excellent post by . A paper by @venables may
+also be helpful.
+
+We introduced the various types of sums of squares in the [previous
+chapter](Compare_means_among_populations.qmd), but they didn't matter
+much there. However, here they do. This returns to the idea that we can
+partition the variance of a given point among various factors.In
+general, we can think about determining the impact by comparing sums of
+squares from models with and without a factor of interest (using
+*incremental* sums of squares). So, for a model
+
+```         
+lm(response ~ A + B + A:B)
+```
+
+We could consider the impact of all factors and interactions by
+comparing:
+
+```         
+SS(AB | A, B) = SS(A, B, A:B) – SS(A, B)
+SS(A | B, AB) = SS(A, B, A:B) – SS(B, A:B)
+SS(B | A, AB) = SS(A, B, A:B) – SS(A, A:B)
+SS(A | B) = SS(A, B) – SS(B)
+SS(B | A) = SS(A, B) – SS(A)
+```
+
+However, the variance we attribute to each factor can be calculated in
+multiple ways. First, we can consider type 1 sums of squares. Using this
+approach, the order factors are entered into the model matters.
+Following above,
+
+```         
+SS(A) for factor A. 
+SS(B | A) for factor B. 
+SS(A:B | B, A) for interaction A:B
+```
+
+This approach leads to different main effects (overall, general impacts
+of a factor) for factors A and B depending on the order. Note
+
+```{r}
+summary(aov(bgb_model_cont_removed))
+```
+
+is different from
+
+```{r}
+summary(aov(lm(below.biomass.g.meter.sq..m2..~Nitrogen.level + Snail.Level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",])))
+```
+
+..Wait, it's the same. That's because differences only arise when the
+data are unbalanced! ANOVAs were designed for use in perfectly balanced
+datasets. We'll come back to this.
+
+Another way is to consider the impact of main effects, such as
+
+```         
+SS(A | B) for factor A. 
+SS(B | A) for factor B.
+```
+
+This approach is known as type II. It does not consider interactions (or
+assumes they are equal to 0)
+
+```{r}
+Anova(bgb_model_cont_removed, type="II")
+```
+
+so it works ok here since the interaction is not significant, but it
+shouldn't be used when interactions are significant/important. Compare
+it to
+
+```{r}
+Anova(bgb_model_cont_removed, type="III")
+```
+
+to see the difference. Type III considers interactions.
+
+To make things, more complicated, when looking at type III output, we
+need to consider how R computes main effects. The default *contrast* in
+R looks at the main effect for factor B using only the first level of
+factor A (specified by the treatment contrasts). If there is an
+interaction, this obviously doesn't make sense - B may matter for some
+levels of A but not others. Given this, we can (and maybe should)
+instead look at the *average* impact of B. We can do this by updating
+how contrasts are calculated. We can specify overall changes to how R
+does this, or we can include in the model as shown here:
+
+```{r}
+Anova(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",], contrasts = list(Snail.Level = "contr.sum", Nitrogen.level = "contr.sum")), type = "III")
+```
+
+This time we get the same results for the main effects as we did for
+Type 1 and Type 2 approaches. To be clear, this is because we used the
+same type of contrasts and had a balanced design. Note this matches the
+above,
+
+```{r}
+Anova(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",], contrasts = list(Snail.Level = "contr.sum", Nitrogen.level = "contr.sum")), type = "II")
+```
+
+and this does not.
+
+```{r}
+Anova(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",], contrasts = list(Snail.Level = "contr.treatment", Nitrogen.level = "contr.treatment")), type = "III")
+```
+
+In doing this, however, note our coefficients also change. Note
+
+```{r}
+data.frame(coef(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",], contrasts = list(Snail.Level = "contr.sum", Nitrogen.level = "contr.sum"))))
+```
+
+is different than
+
+```{r}
+data.frame(coef(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",])))
+```
+
+The contrasts sum approach sets the intercept as the overall average and
+then puts all other levels relative to that (meaning it includes all
+levels). Our default treatment approach lets the first factor level
+(typically alphabetical, here technically a grouped level (Snail Level
+(ambient): Nitrogen level (with) ) be an intercept for the linear model,
+and then considers the other factor levels as deviations from that.
+
+Finally, note than unbalanced designs (when you have a different number
+of means for one grouping than others), the different approaches lead to
+different outcomes. We can consider this (and reinforce the above
+points) using a built-in dataset, ToothGrowth. If you run this code
+
+```{r, eval=F}
+?ToothGrowth
+```
+
+in R, you'll see it notes the dataset contains "the length of
+odontoblasts (cells responsible for tooth growth) in 60 guinea pigs.
+Each animal received one of three dose levels of vitamin C (0.5, 1, and
+2 mg/day) by one of two delivery methods, orange juice or ascorbic acid
+(a form of vitamin C and coded as VC)."
+
+You can view the data using:
+
+```{r}
+head(ToothGrowth)
+```
+
+and we can see we have a balanced design here:
+
+```{r}
+xtabs(~supp+dose, ToothGrowth)
+```
+
+Given that, our type 1, 2, 3 approaches are equivalent (we need to make
+does a factor for ANOVA purposes)
+
+```{r}
+ToothGrowth$dose <- factor(ToothGrowth$dose) 
+summary(aov(lm(len~supp*dose, ToothGrowth)))
+```
+
+```{r}
+Anova(lm(len~supp*dose, ToothGrowth), type = "II") 
+```
+
+```{r}
+Anova(lm(len~supp*dose, ToothGrowth, contrasts = list(supp = "contr.sum", dose = "contr.sum")), type = "III")
+```
+
+but not if we use a different contrast (treatment is default used here)
+
+```{r}
+Anova(lm(len~supp*dose, ToothGrowth), type = "III")
+```
+
+Also, if we have an unbalanced design
+
+```{r}
+library(purrr) 
+library(tidyr) 
+set.seed(19) 
+ToothGrowth_unbalanced <- ToothGrowth %>%   group_by(supp, dose) %>%    nest() %>%               ungroup() %>%    mutate(n = c(10,8,7,5,10,3)) %>%    mutate(samp = map2(data, n, sample_n)) %>%    dplyr::select(-data) %>%   unnest(samp) 
+ToothGrowth_unbalanced_anova <- lm(len~supp*dose, ToothGrowth_unbalanced, contrasts = list(supp = "contr.sum", dose = "contr.sum"))
+```
+
+Then we get different answers from each approach:
+
+```{r}
+summary(aov(ToothGrowth_unbalanced_anova))
+```
+
+```{r}
+Anova(ToothGrowth_unbalanced_anova, type= "II")
+```
+
+```{r}
+Anova(ToothGrowth_unbalanced_anova, type= "III")
+```
+
+Now we see the different ways of calculating sums of squares leads to
+different outcomes when the sample sizes are unequal. In general, this
+supports the use of the type III approach (but see @langsrud2003) and
+for considering contrasts as needed.
+
+### Interpreting interactions
+
+An important note is that all approaches above found the same values (p,
+F, etc.) for the highest order interaction. In general, interactions
+make interpreting main effects difficult. So, we have a few ways of
+handling them.
 
 #### When not significant
 
@@ -588,6 +814,14 @@ If interactions are not significant, they can be handled in 2 ways.
 
 1.  We can leave the interaction in the model and interpret main effects
     immediately
+
+    1.  If doing this, we should make sure we set the contrasts to use
+        an average approach (usually using the *sum* contrasts as shown
+        above)
+
+    ```{r}
+        Anova(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level + Snail.Level:Nitrogen.level, valdez_2023[valdez_2023$Snail.Level != "uncaged",], contrasts = list(Snail.Level = "contr.sum", Nitrogen.level = "contr.sum")), type = "III")
+    ```
 
 2.  We can remove the interaction from the model, re-run it, and
     interpret main effects of the factors.
@@ -598,14 +832,61 @@ If interactions are not significant, they can be handled in 2 ways.
     Anova(bgb_model_cont_removed_int_removed, type="III")
     ```
 
-Regardless, we can interpret main effects (though with possibly
-different outcomes). The benefit of approach 2 is we "increase" the
-degrees of freedom associated with the residuals, which ends up reducing
-the the MST. This is because in 2-way ANOVAs we allocate degrees of
-freedom to calculating main effects and interactions. This approach was
-likely used in the original manuscript.
+Which is the same as...
 
-Simply using the the provided output (approach 1) and not perform
+```{r}
+Anova(bgb_model_cont_removed_int_removed, type="II")
+```
+
+When we do this, the contrasts methods matter less,
+
+```{r}
+bgb_model_cont_removed_int_removed <- update(bgb_model_cont_removed, .~.-Snail.Level:Nitrogen.level, contrasts = list(Snail.Level = "contr.sum", Nitrogen.level = "contr.sum"))
+Anova(bgb_model_cont_removed_int_removed, type="III")
+```
+
+but you shouldn't report main effects from the model with the
+interaction.
+
+Compare to these to what we actually see (always a good idea!)
+
+#### Plotting outcomes
+
+Results from two-way ANOVAs are often plotted similarly to one-way
+ANOVAs, but with colors or other aesthetics representing the additional
+group.
+
+```{r}
+sdm_summary <- summarySE(valdez_2023[valdez_2023$Snail.Level != "uncaged",], measurevar = "below.biomass.g.meter.sq..m2..", groupvars = c("Snail.Level", "Nitrogen.level")) 
+```
+
+```{r}
+sdm_summary$Snail.Level <- relevel(sdm_summary$Snail.Level, "removal")  
+sdm_summary$Nitrogen.level <- revalue(sdm_summary$Nitrogen.level, c("Fertilized" = "Yes",                                                                     "without"= "No")) 
+ggplot(sdm_summary, aes(x=Snail.Level,                            
+                        y=below.biomass.g.meter.sq..m2..,  
+                        fill=Nitrogen.level)) +   
+  geom_col(color="black", position=position_dodge()) +   
+  geom_errorbar(aes(ymin=below.biomass.g.meter.sq..m2.., ymax=below.biomass.g.meter.sq..m2..+ci), 
+                position = position_dodge()) +   
+  labs(title="Grazing impacts depend on nitrogen levels",        
+       x= "Grazing level",        
+       y= expression(paste("Standing dry mass (" , g^{-1}, m^{-2}, ")")),        
+       fill = "Fertilized?")
+```
+
+In general, an interaction is not apparent, fertilized plots tend to do
+better than unfertilized, and there *might* be less dry mass as snails
+increase.
+
+Regardless, we can interpret main effects (though with possibly
+different outcomes). The benefit of approach 2 (removing the
+interaction) is we "increase" the degrees of freedom associated with the
+residuals, which ends up reducing the the MST. This is because in 2-way
+ANOVAs we allocate degrees of freedom to calculating main effects and
+interactions. This approach was likely used in the original manuscript.
+
+Simply using the the provided output (approach 1) and not performing
 another series of tests, however, reduces the chances for a Type 1
 error. We will return to this discussion when we get to model selection.
 
@@ -617,6 +898,13 @@ using post-hoc tests:
 ```{r}
 summary(glht(bgb_model_cont_removed_int_removed, linfct = mcp(Snail.Level = "Tukey")))
 
+```
+
+Note the contrast approach has minimal impact here
+
+```{r}
+summary(glht(lm(below.biomass.g.meter.sq..m2..~Snail.Level + Nitrogen.level
+                , valdez_2023[valdez_2023$Snail.Level != "uncaged",], contrasts = list(Snail.Level = "contr.sum", Nitrogen.level = "contr.sum")), linfct = mcp(Snail.Level = "Tukey")))
 ```
 
 #### When significant

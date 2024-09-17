@@ -8,6 +8,7 @@ bibliography: ../references.bib
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+source("../globals.R")
 ```
 
 ## Class-related materials
@@ -35,3 +36,11 @@ noted throughout the book and listed here.
 ### Git help
 
 @hester
+
+### ANOVAs and experimental design
+
+@meier2022
+
+### BACI designs
+
+@fisher2019

@@ -1,13 +1,16 @@
 project: 
   type: website
   
+bibliography: content/references.bib
+
 execute:
-  freeze: true
+  freeze: auto
+  message: false
 
 website: 
   page-navigation: true
-  title: "Biostatistics!" 
-  description: "Does this work"
+  title: "Biostatistics" 
+  description: "OER textbook focused on introducing students to statistics and modern tools using biological examples"
   site-url: "https://jsgosnell.github.io/cuny_biostats_book/" 
   repo-url: "https://github.com/jsgosnell/cuny_biostats_book"
   repo-actions: [edit, source, issue]
@@ -15,13 +18,13 @@ website:
   
   page-footer:
     right: "This page is built with [Quarto](https://quarto.org/)."
+    center: "[Course notes](https://jsgosnell.github.io/cuny_biostats_book/) & [slides](https://jsgosnell.github.io/cuny_biostats_website/)"
     left: "[&copy; CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en)"  
   
   sidebar:
     background: "#D9E3E4"
     logo: images/image-from-rawpixel-id-547642-jpeg.jpg
-    title: "Biostatistics: Concepts and approaches for collecting good data and 
-  turning it into knowledge!" 
+    title: "An introduction to statistics and modern tools" 
     pinned: true
     align: center
     tools: 
@@ -69,30 +72,44 @@ website:
             text: Combining numerical and categorical predictors
           - href: content/chapters/Linear_model_extensions.qmd
             text: Linear model extensions
+          - href: content/chapters/multivariate_methods.qmd
+            text: Multivariate methods
+          - href: content/chapters/bayesian_analysis.qmd
+            text: Bayesian analysis
+      - section: "Extensions"
+        contents:
+          - href: content/extensions/maps.qmd
+            text: Maps
       - section: "swirl lessons"
         contents:
           - href: content/swirl_lessons.qmd
             text: swirl lessons
       - section: "Practice problems"
         contents:
+          - href: content/practice_problems/how_to_practice.qmd
+            text: How to practice        
           - href: content/practice_problems/1_Getting_used_to_R.qmd
             text: Getting used to R
-          - href: content/practice_problems/2_Estimates_and_ggplot2.Rmd
+          - href: content/practice_problems/2_Estimates_and_ggplot2.qmd
             text: Estimates and ggplot2  
-          - href: content/practice_problems/3_Introduction_to_hypothesis_testing_via_binomial_test.Rmd
+          - href: content/practice_problems/3_Introduction_to_hypothesis_testing_via_binomial_test.qmd
             text: Hypothesis testing starting with binomial tests  
-          - href: content/practice_problems/4_Continuous_tests_for_1_population.Rmd
+          - href: content/practice_problems/4_Continuous_tests_for_1_population.qmd
             text: Tests for continuous data from one sample 
-          - href: content/practice_problems/5_Contingency_analysis.Rmd
+          - href: content/practice_problems/5_Contingency_analysis.qmd
             text: Compare proportions among groups
           - href: content/practice_problems/6_Compare_means.qmd
             text: Compare means among groups
-          - href: content/practice_problems/7_More_ANOVAs.Rmd
+          - href: content/practice_problems/7_More_ANOVAs.qmd
             text: More ANOVAs
-          - href: content/practice_problems/8_Relationships_among_numerical_variables.Rmd
+          - href: content/practice_problems/8_Relationships_among_numerical_variables.qmd
             text: Relationships among numerical variables
-          - href: content/practice_problems/9_Combining_numerical_and_categorical_predictors.Rmd
+          - href: content/practice_problems/9_Combining_numerical_and_categorical_predictors.qmd
             text: Combining numerical and categorical predictors
+          - href: content/practice_problems/10_Linear_model_extensions.qmd
+            text: Linear model extensions
+          - href: content/practice_problems/11_Multivariate_methods.qmd
+            text: Multivariate methods           
       - section: "Solutions"
         contents:
           - href: content/solutions/1_Getting_used_to_R_solutions.qmd
@@ -111,14 +128,22 @@ website:
             text: More ANOVAs
           - href: content/solutions/8_Relationships_among_numerical_variables_solutions.Rmd
             text: Relationships among numerical variables
-          - href: content/practice_problems/9_Combining_numerical_and_categorical_predictors_solutions.Rmd
+          - href: content/solutions/9_Combining_numerical_and_categorical_predictors_solutions.Rmd
             text: Combining numerical and categorical predictors
+          - href: content/solutions/10_Linear_model_extensions_solutions.Rmd
+            text: Linear model extensions
+          - href: content/solutions/11_Multivariate_methods_solutions.Rmd
+            text: Multivariate methods   
       - section: "Software primer"
         contents:
-          - href: content/primer_material/tools_overview.qmd
+          - href: content/primer_materials/tools_overview.qmd
             text: Tools overview
-          - href: content/primer_material/R_primer.R
+          - href: content/primer_materials/R_primer.R
             text: Download an R primer file!
+      - section: "Appendix (Odds and ends)"
+        contents:
+          - href: content/Appendix/github_classroom_stuff.qmd
+            text: Github classroom stuff          
       - section: "End matter"
         contents:
           - href: content/end_matter/acknowledgements.qmd
@@ -135,6 +160,9 @@ format:
     code-copy: true
     code-overflow: wrap
     toc: true
+    toc-depth: 5
+
+
 
 
 filters:
